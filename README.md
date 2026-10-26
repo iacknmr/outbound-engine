@@ -1,62 +1,62 @@
 # Outbound Engine
 
-Outbound Engine is a production-oriented Python application built to orchestrate
-multi-step B2B email outreach across multiple mailboxes, with deterministic
-scheduling, human approval gates, capacity controls, inbound reply processing,
-AI-assisted classification, and fail-closed delivery safeguards.
+A human-supervised B2B email outreach system: it schedules multi-step campaigns across several mailboxes, processes replies, and keeps AI and automation inside strict safety boundaries.
 
-## Highlights
+Built with Python, FastAPI, SQLAlchemy/SQLite, SMTP/IMAP and OpenAI. This repository is a curated portfolio view of a private system, not a runnable product.
 
-- Multi-mailbox outbound orchestration with deterministic safety controls
-- Human approval and emergency-stop boundaries
-- Automated inbound reply processing with AI-assisted classification
-- Production validation backed by more than 1,500 offline automated tests
+![Outbound Engine operator overview](docs/screenshots/overview.png)
 
-## Portfolio Notice
+*Private operational metrics are redacted.*
 
-This repository is a **curated portfolio representation of a private production
-system**, not an open-source distribution.
+## The problem
 
-It intentionally omits proprietary orchestration, recovery algorithms, provider
-integrations, deployment configuration, customer-specific logic, and operational
-infrastructure.
+Outreach automation can do real damage when it acts on its own: duplicate sends, mail to people who opted out, or an AI model deciding what gets sent. This project explores how to build outbound automation that stays fast but remains subject to human judgment, capacity limits and explicit safety boundaries.
 
-The included source files are isolated examples intended to demonstrate
-engineering patterns and code quality. **They do not constitute a runnable
-outbound platform.** The included examples are intentionally non-operational and
-omit the components required to run a complete outbound platform.
+## What the system does
 
-## Overview
+- Imports leads and runs multi-step campaigns across multiple mailboxes
+- Generates email drafts with AI, then requires a human to approve the exact content before anything is sent
+- Schedules sends deterministically within per-mailbox capacity limits
+- Polls inbound mail, correlates replies, and classifies them (deterministic rules first, AI second)
+- Routes positive replies to a Sales Handoff queue and ambiguous ones to Operator Review
+- Honors opt-outs and suppression automatically, with a global emergency stop
 
-The private system addresses a coordination problem: outreach automation must
-remain subject to human judgment, capacity limits, and explicit safety boundaries.
-It brings outbound workflows and inbound attention into a private operator
-interface, without treating AI output or transport acceptance as unquestionable
-business evidence.
+## My role
 
-This portfolio explains that work at a high level and supplies small, newly
-written educational examples. It does not distribute a partially assembled
-version of the product.
+I designed the product and its architecture, defined the safety boundaries and acceptance criteria, and decided how AI, automation and human review divide the work. The implementation was done with AI coding assistants (design discussions with ChatGPT, implementation with Codex) under my direction, then checked with automated tests, end-to-end runs and reviews.
 
-## Engineering Scope
+This repository shows how I think about system design and reliability. I do not present it as hand-written code.
 
-The private project's engineering scope includes:
+## Screenshots
 
-- Python backend development and a FastAPI operator console.
-- SQLAlchemy/SQLite persistence and deterministic scheduling.
-- Multi-mailbox capacity management and approval-gated message lifecycles.
-- SMTP/IMAP abstraction and automatic Sent-folder synchronization.
-- Inbound reply polling and AI-assisted classification.
-- Operator Review, Sales Handoff, and suppression/opt-out handling.
-- Fail-closed recovery and Ubuntu/systemd deployment.
+### Campaign Setup
+![New campaign workflow](docs/screenshots/campaign.png)
 
-These capabilities describe the private project. Their implementations are
-intentionally absent from this repository.
+### Human Approval
+![Email generation review and approval workflow](docs/screenshots/email-preview.png)
+
+### Operator Review
+![Operator review queue](docs/screenshots/review.png)
+
+### Sales Handoff
+![Sales handoff workflow](docs/screenshots/sales-handoff.png)
+
+*Sensitive lead and company identifiers are redacted.*
+
+## Key design decisions
+
+- **AI never authorizes an external action.** Models draft text and suggest labels. Sending, routing, suppression and scheduling are decided by deterministic code, and a person approves the exact email version before it can be sent.
+- **Uncertain outcomes fail closed.** If it is unclear whether a message was delivered, the system does not retry blindly. It records the uncertainty and waits for evidence or an operator.
+- **Transport success is not delivery.** SMTP acceptance, Sent-folder synchronization and recipient receipt are tracked as separate facts. A synchronization failure can never trigger a second send.
+- **Capacity and suppression are hard limits.** Per-mailbox ceilings, cooldowns and opt-out lists constrain automation regardless of what an AI model suggests.
+- **Provider-independent interfaces.** SMTP/IMAP sit behind abstractions with fake adapters, so behavior can be tested offline without real mailboxes.
+- **An emergency stop that does not depend on providers.** A global stop disables outbound sending on its own authority.
+
+More in [security and safety](docs/security-and-safety.md) and [engineering notes](docs/engineering-notes.md).
 
 ## Architecture
 
-The diagram describes responsibilities, not implementation ordering or internal
-data structures.
+The diagram describes responsibilities, not implementation order or internal data structures.
 
 ```mermaid
 flowchart TD
@@ -71,46 +71,16 @@ flowchart TD
 ```
 
 See [architecture](docs/architecture.md) for a short, non-operational description.
-No component shown here is assembled into a working platform in the public code.
 
-## Safety & Reliability
+## Technology
 
-Private-system safety principles include:
+**Private system:** Python, FastAPI, SQLAlchemy, SQLite, OpenAI, SMTP/IMAP, pytest, mypy, Ruff, Bandit, Ubuntu, systemd.
 
-- Global emergency stop and explicit human approval.
-- Mailbox/provider capacity ceilings, suppression, and cooldown checks.
-- Idempotent send protection and fail-closed handling of uncertain outcomes.
-- No blind retry after uncertain delivery.
-- Operator review for ambiguous events.
-- Sent synchronization failure cannot trigger a duplicate SMTP send.
+**Public examples:** Python standard library only. Development checks use pytest, mypy, Ruff and Bandit.
 
-These are design goals and tested private-system boundaries, not guarantees
-provided by the standalone examples. SMTP acceptance is not proof of recipient
-delivery, and external systems do not provide an end-to-end exactly-once promise.
+## Selected code examples
 
-The [security and safety notes](docs/security-and-safety.md) intentionally omit
-recovery transitions, allocation algorithms, and operational procedures.
-
-## AI Usage
-
-AI is used selectively in the private system for tasks such as reply
-classification and bounded messaging assistance. Critical delivery and safety
-decisions remain deterministic and human-controlled where appropriate.
-
-The public routing example consumes a supplied label. It does not classify text,
-contain a prompt, call a model, or reproduce the private business decision tree.
-No AI credentials or provider adapters are included.
-
-## Technology Stack
-
-Private project: Python, FastAPI, SQLAlchemy, SQLite, pytest, mypy, Ruff, Bandit,
-SMTP/IMAP, Ubuntu, and systemd.
-
-Public examples: Python standard library only. Development checks use pytest,
-mypy, Ruff, and Bandit. There is no FastAPI dependency, database driver wiring,
-network client, or service entrypoint in the examples.
-
-## Selected Code Examples
+Small, newly written examples that illustrate design principles. They are not copies of the private implementation.
 
 | Example | What it demonstrates | What it deliberately does not implement |
 | --- | --- | --- |
@@ -120,21 +90,13 @@ network client, or service entrypoint in the examples.
 | [Lifecycle types](src/portfolio_examples/lifecycle_types.py) | Enums and frozen dataclasses | Database models or a transition/recovery system |
 | [Routing example](src/portfolio_examples/routing_example.py) | Three illustrative destinations and missing-evidence review | AI classification, production rules, or workflow side effects |
 
-These independent examples illustrate design principles, not renamed copies of
-production algorithms. A successful approval/capacity check does not authorize
-an external action. A fake receipt means only that an object was recorded locally.
+A successful approval or capacity check here does not authorize any external action, and the fake receipt only means an object was recorded in memory.
 
 ## Testing
 
-The private production codebase has been validated with **more than 1,500 offline
-automated tests** covering sending, scheduling, inbound processing, safety gates,
-recovery paths, and operator workflows. That is historical private validation;
-this repository does not contain that suite, and it was not rerun for this task.
+The private codebase has been validated with **more than 1,500 offline automated tests** covering sending, scheduling, inbound processing, safety gates, recovery paths and operator workflows. This is historical private validation: that suite is not part of this repository and was not rerun for it.
 
-The public example suite is reported separately below. It exercises only the
-small, fictional examples and never accesses production state.
-
-For local evaluation with Python 3.11 or newer:
+The public examples have their own checks. For local evaluation with Python 3.11 or newer:
 
 ```sh
 python -m venv .venv
@@ -146,86 +108,32 @@ python -m ruff check src tests
 python -m bandit -r src -q
 ```
 
-Dependency installation may require a package index or cached wheels. The
-examples and tests themselves do not perform network operations. They need no
-environment configuration, account, database, or provider credential.
+Result for the public examples: **38 tests pass**, strict mypy passes on all 10 Python files, Ruff passes, and Bandit passes on the six example modules. Tests ran offline with socket operations blocked and external pytest plugins disabled. No private module was imported.
 
-Public example validation: **38 tests PASS**, strict mypy PASS on all 10 Python
-files, Ruff PASS, and Bandit PASS on the six example modules. Tests were run
-offline with socket operations blocked and external pytest plugins disabled.
-No private application module was imported. These results are separate from the
-private system's historical test count.
+## Controlled end-to-end validation
 
-## Screenshots
+The private system has been validated end to end with real test mailboxes and controlled recipients (not a live customer campaign):
 
-### Operator Console
+- Automated first-touch scheduling and sending
+- Inbound reply polling and correlation
+- Positive-reply routing to Sales Handoff
+- Emergency-stop behavior
+- Sent-folder synchronization after successful SMTP delivery
 
-![Outbound Engine operator overview](docs/screenshots/overview.png)
+Operational identifiers, recipients, infrastructure details and customer data are intentionally omitted.
 
-Private operational metrics are redacted.
+## What this repository is and is not
 
-### Campaign Setup
+This is a **curated portfolio representation of a private system**, not an open-source distribution. The included code consists of isolated examples and **does not constitute a runnable outbound platform**. There is no console startup, campaign import, real send, mailbox polling, deployment, or "just add credentials" path.
 
-![New campaign workflow](docs/screenshots/campaign.png)
+Not included: production source, orchestration, scheduling and selection algorithms, recovery algorithms, provider integrations, classification prompts, customer logic, database schema and migrations, deployment configuration, operational scripts, credentials, or campaign data.
 
-### Human Approval
+Design goals described here are tested boundaries of the private system, not guarantees provided by the standalone examples. SMTP acceptance is not proof of delivery, and external systems offer no end-to-end exactly-once guarantee.
 
-![Email generation review and approval workflow](docs/screenshots/email-preview.png)
-
-### Operator Review
-
-![Operator review queue](docs/screenshots/review.png)
-
-### Sales Handoff
-
-![Sales handoff workflow](docs/screenshots/sales-handoff.png)
-
-Sensitive lead and company identifiers are redacted.
-
-## Production Validation Highlights
-
-The private system has completed controlled production validation for:
-
-- Automated first-touch scheduling and sending.
-- Inbound reply polling and correlation.
-- Positive-reply routing to Sales Handoff.
-- Emergency-stop behavior.
-- Sent-folder synchronization after successful SMTP delivery.
-
-Operational identifiers, recipients, infrastructure details, and customer data
-are intentionally omitted.
-
-## Engineering Lessons
-
-- Keep deterministic safety boundaries around automation.
-- Separate transport success, mailbox synchronization, and recipient delivery.
-- Treat uncertain outcomes as decisions requiring evidence, not permission to retry.
-- Design human-in-the-loop workflows without turning approval into a UI-only rule.
-- Use provider-independent interfaces and fake adapters to test boundaries.
-- Use observability and acceptance tests to distinguish intent from real behavior.
-
-See [engineering notes](docs/engineering-notes.md) for the concise lessons.
-
-## Repository Scope
-
-Not included: complete production source, orchestration, scheduler or selection
-algorithms, recovery algorithms, provider integrations, classification prompts,
-customer logic, production database/schema/migrations, deployment configuration,
-operational scripts, credentials, or campaign data.
-
-There is no console startup, campaign import, real send, mailbox polling,
-deployment, or "just add credentials" path. The previous comprehensive candidate
-and its history are not part of this repository.
-
-Suggested repository metadata is in [GitHub profile](docs/github-profile.md).
-Publication remains subject to owner review; no remote is configured.
-
-## Usage Notice
+## Usage notice
 
 Copyright © 2026 B2Bound. All rights reserved.
 
 No open-source license is granted.
 
-This repository is provided solely for portfolio and evaluation purposes. No
-permission is granted to copy, modify, redistribute, sublicense, or commercially
-use the source code or documentation.
+This repository is provided solely for portfolio and evaluation purposes. No permission is granted to copy, modify, redistribute, sublicense, or commercially use the source code or documentation.
